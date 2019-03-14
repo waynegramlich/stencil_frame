@@ -13,6 +13,14 @@
 #   * Documentation strings are allowed to go to 100 characters.
 #   * Similar method/function calls with similar arguments are typically vertically aligned.
 #   * Assignments with similar expressions are typically vertically aligned.
+#
+# Notes:
+# * There is an `EZCAD3` bug with through hole simple pockets, where the hole is tool is too big
+#   by the radius of the end-mill.  Oops.
+# * There is lots of air milling for pockets due to an `EZCAD3` issure with rendering simple
+#   pockets.  This is particularly true with *EastEdge*.
+# * The plugs for *Clamp* are a little too big in the dy direction.  The *BottomClamp*
+#   simple pocket goes right to the edges.
 
 from EZCAD3 import *
 
@@ -99,7 +107,7 @@ class BottomClamp(Part):
 	extra_dx = L(inch="1/4")
 	extra_dy = L(inch="1/4")
 	bottom_clamp.vice_mount("Top_Vice", "t", "w", "l", extra_dx, extra_dy)
-	bottom_clamp.tooling_plate_drill("Plate_Drill", (0, 2, 4, 6, 8), (0, 2, 3),
+	bottom_clamp.tooling_plate_drill("Plate_Drill", (0, 1, 3, 5, 7, 8), (0, 2, 3),
 	 [])
 	bottom_clamp.tooling_plate_mount("Top_Plate")
 	
@@ -110,6 +118,7 @@ class BottomClamp(Part):
 	# Mill out a landing for the *west_clamp*:
 	corner1 = P(x10, y20, z10)
 	corner2 = P(x20, y0,  z20)
+	radius = L(inch="3/16")
 	bottom_clamp.simple_pocket("Clamp_Pocket", corner1, corner2, radius, "")
 	bottom_clamp.cnc_fence()
 
@@ -124,13 +133,18 @@ class BottomClamp(Part):
 	bottom_clamp.simple_pocket("Stencil_Lock", corner1, corner2, radius, "")
 
 	# Drill the holes that join *west_clamp* to *bottom_clamp* (i.e. "wcbc"):
-	bottom_clamp.fasten("WCBC_NE", stencil_frame.wcbc_ne_fastener_, "thread")
-	bottom_clamp.fasten("WCBC_NW", stencil_frame.wcbc_nw_fastener_, "thread")
-	bottom_clamp.fasten("WCBC_CW", stencil_frame.wcbc_cw_fastener_, "thread")
-	bottom_clamp.fasten("WCBC_SE", stencil_frame.wcbc_se_fastener_, "thread")
-	bottom_clamp.fasten("WCBC_SW", stencil_frame.wcbc_sw_fastener_, "thread")
+	bottom_clamp.fasten("WCBC_NCE", stencil_frame.wcbc_nce_fastener_, "thread")
+	bottom_clamp.fasten("WCBC_NCW", stencil_frame.wcbc_ncw_fastener_, "thread")
+	bottom_clamp.fasten("WCBC_NE",  stencil_frame.wcbc_ne_fastener_,  "thread")
+	bottom_clamp.fasten("WCBC_NW",  stencil_frame.wcbc_nw_fastener_,  "thread")
+	bottom_clamp.fasten("WCBC_CE",  stencil_frame.wcbc_ce_fastener_,  "thread")
+	bottom_clamp.fasten("WCBC_CW",  stencil_frame.wcbc_cw_fastener_,  "thread")
+	bottom_clamp.fasten("WCBC_SCE", stencil_frame.wcbc_sce_fastener_, "thread")
+	bottom_clamp.fasten("WCBC_SCW", stencil_frame.wcbc_scw_fastener_, "thread")
+	bottom_clamp.fasten("WCBC_SE",  stencil_frame.wcbc_se_fastener_,  "thread")
+	bottom_clamp.fasten("WCBC_SW",  stencil_frame.wcbc_sw_fastener_,  "thread")
 
-	# Remount *bottom_clamp* so that west edges is facing up:
+	# Remount *bottom_clamp* so that west edge is facing up:
 	bottom_clamp.vice_mount("West_Vice", "w", "b", "l")
 	bottom_clamp.fasten("WCBC_BN", stencil_frame.webc_bn_fastener_, "thread")
 	bottom_clamp.fasten("WCBC_BS", stencil_frame.webc_bs_fastener_, "thread")
@@ -183,14 +197,19 @@ class Clamp(Part):
 	debug               = clamp.debug_b
 	
 	# Compute some X coordinates:
+	plug_shim = L(inch=0.001)
 	zero = L()
 	dx = L(inch="3/4")
 	x20 = stencil_tne.x + dx/2
-	x18 = stencil_tne.x
+	x19 = stencil_tne.x + dx/2 - plug_shim
+	x18 = stencil_tne.x + plug_shim
+	x17 = stencil_tne.x
 	x16 = stencil_tne.x - dx/2
 	x10 = zero
 	x4  = stencil_bsw.x + dx/2
-	x2  = stencil_bsw.x
+	x3  = stencil_bsw.x
+	x2  = stencil_bsw.x - plug_shim
+	x1  = stencil_bsw.x - dx/2 + plug_shim
 	x0  = stencil_bsw.x - dx/2
 
 	# Compute some Y coordinates:
@@ -198,7 +217,9 @@ class Clamp(Part):
 	extra_dy = L(inch="1/2")
 	y20 = stencil_tne.y + extra_dy + end_mill_radius
 	y19 = stencil_tne.y + extra_dy
+	y18 = stencil_tne.y + extra_dy - plug_shim
 	y10 = zero
+	y2  = stencil_bsw.y - extra_dy + plug_shim
 	y1  = stencil_bsw.y - extra_dy
 	y0  = stencil_bsw.y - extra_dy - end_mill_radius
 
@@ -230,21 +251,10 @@ class Clamp(Part):
 	    clamp.vice_mount("Vice_Bottom", "b", "w", "l", extra_dx, extra_dy)
 	clamp.tooling_plate_drill("Plate_Drill", (0, 3, 5, 8), (0, 1), [])
 	clamp.tooling_plate_mount("Plate_Mount")
-	radius = L(inch="1/4")
+	#radius = L(inch="1/4")
+	radius = dx/4 - L(inch=0.001)
 	clamp.rectangular_contour("Exterior_Contour", radius)
 	
-	# Make space for the stencil:
-	end_mill_radius = L(inch="3/16")
-	if is_east:
-	    corner1 = P(x16, y0,  z10)
-	    corner2 = P(x18, y20, z0)
-	    comment = "East_Stencil_Pocket"
-	else:
-	    corner1 = P(x2,  y0,  z10)
-	    corner2 = P(x4,  y20, z0)
-	    comment = "West_Stencil_Pocket"
-	clamp.simple_pocket(comment, corner1, corner2, end_mill_radius, "")
-
 	# Remove the "bottom" of the clamp:
 	if is_east:
 	    corner1 = P(x16, y0,  z0)
@@ -252,24 +262,48 @@ class Clamp(Part):
 	else:
 	    corner1 = P(x0, y0,  z0)
 	    corner2 = P(x4, y20, z5)
-	clamp.simple_pocket("Bottom_Remove", corner1, corner2, end_mill_radius, "")
-	
+	radius = L(inch="3/16")
+	clamp.simple_pocket("Bottom_Remove", corner1, corner2, radius, "")
+	clamp.cnc_fence()
+
 	# Drill some holes for mounting the *camp* to either *east_edge* or *bottom_clamp*:
 	if is_east:
 	    # Drill holes for *east_clamp* and *east_edge* (i.e. "ecee") joining:
-	    clamp.fasten("ECEE_NE", stencil_frame.ecee_ne_fastener_, "close")
-	    clamp.fasten("ECEE_NW", stencil_frame.ecee_nw_fastener_, "close")
-	    clamp.fasten("ECEE_CE", stencil_frame.ecee_ce_fastener_, "close")
-	    clamp.fasten("ECEE_SW", stencil_frame.ecee_se_fastener_, "close")
-	    clamp.fasten("ECEE_SE", stencil_frame.ecee_sw_fastener_, "close")
+	    clamp.fasten("ECEE_NCE", stencil_frame.ecee_nce_fastener_, "close")
+	    clamp.fasten("ECEE_NE",  stencil_frame.ecee_ne_fastener_,  "close")
+	    clamp.fasten("ECEE_NW",  stencil_frame.ecee_nw_fastener_,  "close")
+	    clamp.fasten("ECEE_CE",  stencil_frame.ecee_ce_fastener_,  "close")
+	    clamp.fasten("ECEE_SCE", stencil_frame.ecee_sce_fastener_, "close")
+	    clamp.fasten("ECEE_SE",  stencil_frame.ecee_se_fastener_,  "close")
+	    clamp.fasten("ECEE_SW",  stencil_frame.ecee_sw_fastener_,  "close")
         else:
 	    # Drill holes for *west_clamp* and *bottom_clamp* (i.e. "wcbc") joining:
-	    clamp.fasten("WCBC_NE", stencil_frame.wcbc_ne_fastener_, "close")
-	    clamp.fasten("WCBC_NW", stencil_frame.wcbc_nw_fastener_, "close")
-	    clamp.fasten("WCBC_CW", stencil_frame.wcbc_cw_fastener_, "close")
-	    clamp.fasten("WCBC_SE", stencil_frame.wcbc_se_fastener_, "close")
-	    clamp.fasten("WCBC_SE", stencil_frame.wcbc_sw_fastener_, "close")
+	    clamp.fasten("WCBC_NCW", stencil_frame.wcbc_ncw_fastener_, "close")
+	    clamp.fasten("WCBC_NE",  stencil_frame.wcbc_ne_fastener_,  "close")
+	    clamp.fasten("WCBC_NW",  stencil_frame.wcbc_nw_fastener_,  "close")
+	    clamp.fasten("WCBC_CW",  stencil_frame.wcbc_cw_fastener_,  "close")
+	    clamp.fasten("WCBC_SCW", stencil_frame.wcbc_scw_fastener_, "close")
+	    clamp.fasten("WCBC_SE",  stencil_frame.wcbc_se_fastener_,  "close")
+	    clamp.fasten("WCBC_SW",  stencil_frame.wcbc_sw_fastener_,  "close")
 
+	# Mill out the stencil plug:
+	contour = Contour("Stencil_Plug")
+	start = P(x0, y0, z0)
+	stop  = P(x0, y0, z10)
+	if is_east:
+	    radius = (x19 - x18)/2
+	    contour.bend_append("Plug_NW", P(x18, y18), radius)
+	    contour.bend_append("Plug_SW", P(x18, y2),  radius)
+	    contour.bend_append("Plug_SE", P(x19, y2),  radius)
+	    contour.bend_append("Plug_NE", P(x19, y18), radius)
+	else:
+	    radius = (x2 - x1)/2
+	    contour.bend_append("Plug_NW", P(x1,  y18), radius)
+	    contour.bend_append("Plug_SW", P(x1,  y2),  radius)
+	    contour.bend_append("Plug_SE", P(x2,  y2),  radius)
+	    contour.bend_append("Plug_NE", P(x2,  y18), radius)
+	clamp.contour("Stencil_Plug_Contour", contour, start, stop, 2*radius, "")
+	
 	# Peform any requested vizualization *debug* operation:
 	if debug:
 	    extra = L(inch="1/2")
@@ -306,15 +340,14 @@ class EastEdge(Part):
 	west_clamp    = stencil_frame.west_clamp_
 
 	# Grab some values from the *Part*'s:
-	#bottom_clamp_tne    = bottom_clamp.tne
-	#bottom_clamp_bsw    = bottom_clamp.bsw
-	east_clamp_tne      = east_clamp.tne
-	east_clamp_bsw      = east_clamp.bsw
-	stencil_tne         = stencil.tne
-	stencil_bsw         = stencil.bsw
-	stencil_thickness   = stencil.thickness_l
-	stencil_fold_amount = stencil.fold_amount_l
-	debug               = east_edge.debug_b
+	east_clamp_tne                = east_clamp.tne
+	east_clamp_bsw                = east_clamp.bsw
+	stencil_tne                   = stencil.tne
+	stencil_bsw                   = stencil.bsw
+	stencil_thickness             = stencil.thickness_l
+	stencil_fold_amount           = stencil.fold_amount_l
+	stencil_frame_stock_thickness = stencil_frame.stock_thickness_l
+	debug                         = east_edge.debug_b
 
 	# Compute some X coordinates:
 	end_mill_radius = L(inch="1/2")
@@ -340,12 +373,13 @@ class EastEdge(Part):
 	y0  = east_clamp_bsw.y - material_dy 
 
 	# Compute some Z coordinates:
-	east_edge.dz_l    = dz    = L(inch=0.800)
-	z10 =  dz/2
+	east_edge.dz_l    = dz    = stencil_frame_stock_thickness
+	z10 = stencil_tne.z + dz/2
+	z7  = stencil_tne.z + dz/2 # *z7* should be either *z5* or *z3*; bug in *simple_pocket*???
 	z5  = stencil_tne.z
 	z3  = stencil_tne.z - stencil_thickness
 	z1  = stencil_tne.z - stencil_fold_amount - L(mm=1.00)
-	z0  = -dz/2
+	z0  = stencil_tne.z - dz/2
 	east_edge.y_gap_l = y_gap = L(inch="1/2")
 
 	# Start with a block of *material*:
@@ -359,8 +393,8 @@ class EastEdge(Part):
 	extra_dx = L(inch="1/4")
 	extra_dy = L(inch="1/4")
 	east_edge.vice_mount("Top_Vice", "t", "e", "l", extra_dx, extra_dy)
-	east_edge.tooling_plate_drill("Plate_Drill", (0, 3, 6, 9, 12), (0, 1, 2, 3, 4),
-	  [(3,0), (6,0), (9,0), (0,1), (12,1), (3,2), (6,2), (9,2), (0,3), (12,3)])
+	east_edge.tooling_plate_drill("Plate_Drill", (0, 3, 5, 7, 9, 12), (0, 1, 2, 3, 4),
+	  [(3,0), (5,0), (7,0), (9,0), (0,1), (12,1), (3,2), (5,2), (7,2), (9,2), (0,3), (12,3)])
 	east_edge.tooling_plate_mount("Top_Plate")
 	contour_radius = L(inch="1/16")
 	east_edge.rectangular_contour("Exteriof_Contour", contour_radius)
@@ -374,17 +408,17 @@ class EastEdge(Part):
 
 	# Mill out a landing for the *stencil*:
 	corner1 = P(x0,  y8,  z3)
-	corner2 = P(x15, y12, z10)  #FIXME: Why doesn't *z5* work here???!!!
+	corner2 = P(x15, y12, z7)  #FIXME: Why doesn't *z5* work here???!!!
 	east_edge.simple_pocket("Stencil_Landing", corner1, corner2, radius, "")
 
 	# Mill out a through pocket that leads up to the *east_clamp*:
 	corner1 = P(x0,  y8,  z0)
-	corner2 = P(x10, y12, z10)  #FIXME: Why doesn't *z3* work here???!!!
-	east_edge.simple_pocket("Through_Pocket", corner1, corner2, radius, "")
+	corner2 = P(x10, y12, z7)  #FIXME: Why doesn't *z3* work here???!!!
+	east_edge.simple_pocket("Through_Pocket", corner1, corner2, radius, "t")
 
 	# Mill out the pocketfor the stencil lock:
 	corner1 = P(x13, y5,  z1)
-	corner2 = P(x15, y15, z10)  #FIXME: Why doesn't *z5* work here???!!!
+	corner2 = P(x15, y15, z7)  #FIXME: Why doesn't *z5* work here???!!!
 	east_edge.simple_pocket("Stencil_Lock", corner1, corner2, radius, "")
 
 	# Drill the holes to join *north_edge*/*south_edge* to *east_edge*:
@@ -398,11 +432,16 @@ class EastEdge(Part):
 	east_edge.fasten("SE_SW", stencil_frame.se_sw_fastener_, "thread")
 
 	# Drill the holes to join *east_clamp* to *east_edge* (i.e. "ecee"):
-	east_edge.fasten("ECEE_NE", stencil_frame.ecee_ne_fastener_, "thread")
-	east_edge.fasten("ECEE_NW", stencil_frame.ecee_nw_fastener_, "thread")
-	east_edge.fasten("ECEE_CE", stencil_frame.ecee_ce_fastener_, "thread")
-	east_edge.fasten("ECEE_SW", stencil_frame.ecee_se_fastener_, "thread")
-	east_edge.fasten("ECEE_SE", stencil_frame.ecee_sw_fastener_, "thread")
+	east_edge.fasten("ECEE_NCE", stencil_frame.ecee_nce_fastener_, "thread")
+	east_edge.fasten("ECEE_NCW", stencil_frame.ecee_ncw_fastener_, "thread")
+	east_edge.fasten("ECEE_NE",  stencil_frame.ecee_ne_fastener_,  "thread")
+	east_edge.fasten("ECEE_NW",  stencil_frame.ecee_nw_fastener_,  "thread")
+	east_edge.fasten("ECEE_CE",  stencil_frame.ecee_ce_fastener_,  "thread")
+	east_edge.fasten("ECEE_CW",  stencil_frame.ecee_cw_fastener_,  "thread")
+	east_edge.fasten("ECEE_SCE", stencil_frame.ecee_sce_fastener_, "thread")
+	east_edge.fasten("ECEE_SCW", stencil_frame.ecee_scw_fastener_, "thread")
+	east_edge.fasten("ECEE_SW",  stencil_frame.ecee_se_fastener_,  "thread")
+	east_edge.fasten("ECEE_SE",  stencil_frame.ecee_sw_fastener_,  "thread")
 
 	# Do any requested *debug* visualation operations:
 	if debug:
@@ -444,15 +483,16 @@ class FrameEdge(Part):
 	west_edge     = stencil_frame.west_edge_
 
 	# Grab some values out of the *Part*'s:
-	bottom_clamp_bsw = bottom_clamp.bsw
-	bottom_clamp_tne = bottom_clamp.tne
-	debug            = frame_edge.debug_b
-	east_clamp_bsw   = east_clamp.bsw
-	east_clamp_tne   = east_clamp.tne
-	east_edge_bsw    = east_edge.bsw
-	east_edge_tne    = east_edge.tne
-	is_north         = frame_edge.is_north_b
-	west_edge_bsw    = west_edge.bsw
+	bottom_clamp_bsw              = bottom_clamp.bsw
+	bottom_clamp_tne              = bottom_clamp.tne
+	debug                         = frame_edge.debug_b
+	east_clamp_bsw                = east_clamp.bsw
+	east_clamp_tne                = east_clamp.tne
+	east_edge_bsw                 = east_edge.bsw
+	east_edge_tne                 = east_edge.tne
+	is_north                      = frame_edge.is_north_b
+	stencil_frame_stock_thickness = stencil_frame.stock_thickness_l
+	west_edge_bsw                 = west_edge.bsw
 
 	# Define some X coordinates:
 	zero = L()
@@ -469,7 +509,7 @@ class FrameEdge(Part):
 	y0  = east_edge_bsw.y
 
 	# Define some Z coordinates:
-	dz  = L(inch=0.800)
+	dz  = stencil_frame_stock_thickness
 	z10 = east_edge_tne.z + dz
 	z5  = zero
 	z0  = east_edge_tne.z
@@ -620,18 +660,28 @@ class StencilFrame(Part):
 	stencil_frame.sw_sw_fastener_ = Fastener(stencil_frame, "SW_SW")
 
 	# *west_clamp* and *bottom_clamp* fasteners:
-	stencil_frame.wcbc_ne_fastener_ = Fastener(stencil_frame, "WCBC_NE")
-	stencil_frame.wcbc_nw_fastener_ = Fastener(stencil_frame, "WCBC_NW")
-	stencil_frame.wcbc_cw_fastener_ = Fastener(stencil_frame, "WCBC_CW")
-	stencil_frame.wcbc_se_fastener_ = Fastener(stencil_frame, "WCBC_SE")
-	stencil_frame.wcbc_sw_fastener_ = Fastener(stencil_frame, "WCBC_SW")
+	stencil_frame.wcbc_cw_fastener_  = Fastener(stencil_frame, "WCBC_CW")
+	stencil_frame.wcbc_ce_fastener_  = Fastener(stencil_frame, "WCBC_CE")
+	stencil_frame.wcbc_nce_fastener_ = Fastener(stencil_frame, "WCBC_NCE")
+	stencil_frame.wcbc_ncw_fastener_ = Fastener(stencil_frame, "WCBC_NCW")
+	stencil_frame.wcbc_ne_fastener_  = Fastener(stencil_frame, "WCBC_NE")
+	stencil_frame.wcbc_nw_fastener_  = Fastener(stencil_frame, "WCBC_NW")
+	stencil_frame.wcbc_se_fastener_  = Fastener(stencil_frame, "WCBC_SE")
+	stencil_frame.wcbc_sw_fastener_  = Fastener(stencil_frame, "WCBC_SW")
+	stencil_frame.wcbc_sce_fastener_ = Fastener(stencil_frame, "WCBC_SCE")
+	stencil_frame.wcbc_scw_fastener_ = Fastener(stencil_frame, "WCBC_SCW")
 
 	# *east_clamp* and *east_edge* fasteners:
-	stencil_frame.ecee_ne_fastener_ = Fastener(stencil_frame, "ECEE_NE")
-	stencil_frame.ecee_nw_fastener_ = Fastener(stencil_frame, "ECEE_NW")
-	stencil_frame.ecee_ce_fastener_ = Fastener(stencil_frame, "ECEE_CE")
-	stencil_frame.ecee_se_fastener_ = Fastener(stencil_frame, "ECEE_SE")
-	stencil_frame.ecee_sw_fastener_ = Fastener(stencil_frame, "ECEE_SW")
+	stencil_frame.ecee_ce_fastener_  = Fastener(stencil_frame, "ECEE_CE")
+	stencil_frame.ecee_cw_fastener_  = Fastener(stencil_frame, "ECEE_CW")
+	stencil_frame.ecee_nce_fastener_ = Fastener(stencil_frame, "ECEE_NCE")
+	stencil_frame.ecee_ncw_fastener_ = Fastener(stencil_frame, "ECEE_NCW")
+	stencil_frame.ecee_ne_fastener_  = Fastener(stencil_frame, "ECEE_NE")
+	stencil_frame.ecee_nw_fastener_  = Fastener(stencil_frame, "ECEE_NW")
+	stencil_frame.ecee_sce_fastener_ = Fastener(stencil_frame, "ECEE_SCE")
+	stencil_frame.ecee_scw_fastener_ = Fastener(stencil_frame, "ECEE_SCW")
+	stencil_frame.ecee_se_fastener_  = Fastener(stencil_frame, "ECEE_SE")
+	stencil_frame.ecee_sw_fastener_  = Fastener(stencil_frame, "ECEE_SW")
 
 	# Tension screws:
 	stencil_frame.webc_bn_fastener_ = Fastener(stencil_frame, "WEBC_BN")
@@ -655,30 +705,32 @@ class StencilFrame(Part):
 	west_edge     = stencil_frame.west_edge_
 
 	# Grab some values from *Part*'s:
-	bottom_clamp_bsw = bottom_clamp.bsw
-	bottom_clamp_dx  = bottom_clamp.dx
-	bottom_clamp_tne = bottom_clamp.tne
-	east_clamp_bsw   = east_clamp.bsw
-	east_clamp_dx    = east_clamp.dx
-	east_clamp_tne   = east_clamp.tne
-	east_edge_bsw    = east_edge.bsw
-	east_edge_dx     = east_edge.dx
-	east_edge_tne    = east_edge.tne
-	south_edge_bsw   = south_edge.bsw
-	south_edge_dy    = south_edge.dy
-	south_edge_tne   = south_edge.tne
-	stencil_bsw      = stencil.bsw
-	stencil_tne      = stencil.tne
-	north_edge_bsw   = north_edge.bsw
-	north_edge_dy    = north_edge.dy
-	north_edge_tne   = north_edge.tne
-	west_clamp_bsw   = west_clamp.bsw
-	west_clamp_dx    = west_clamp.dx
-	west_clamp_tne   = west_clamp.tne
-	west_edge_bsw    = west_edge.bsw
-	west_edge_dx     = west_edge.dx
-	west_edge_dz     = west_edge.dz
-	west_edge_tne    = west_edge.tne
+	bottom_clamp_bsw  = bottom_clamp.bsw
+	bottom_clamp_dx   = bottom_clamp.dx
+	bottom_clamp_tne  = bottom_clamp.tne
+	east_clamp_bsw    = east_clamp.bsw
+	east_clamp_dx     = east_clamp.dx
+	east_clamp_tne    = east_clamp.tne
+	east_edge_bsw     = east_edge.bsw
+	east_edge_dx      = east_edge.dx
+	east_edge_tne     = east_edge.tne
+	south_edge_bsw    = south_edge.bsw
+	south_edge_dy     = south_edge.dy
+	south_edge_tne    = south_edge.tne
+	stencil_bsw       = stencil.bsw
+	stencil_dy        = stencil.dy
+	stencil_tne       = stencil.tne
+	stencil_thickness = stencil.thickness_l
+	north_edge_bsw    = north_edge.bsw
+	north_edge_dy     = north_edge.dy
+	north_edge_tne    = north_edge.tne
+	west_clamp_bsw    = west_clamp.bsw
+	west_clamp_dx     = west_clamp.dx
+	west_clamp_tne    = west_clamp.tne
+	west_edge_bsw     = west_edge.bsw
+	west_edge_dx      = west_edge.dx
+	west_edge_dz      = west_edge.dz
+	west_edge_tne     = west_edge.tne
 
 	# Define some X coordinates:
 	# *ramp_dx* is the overlap between *north_edge*/*south edge* and *east_edge*:
@@ -687,6 +739,7 @@ class StencilFrame(Part):
 	x50 = east_clamp_tne.x
 	x48 = east_clamp_tne.x - east_clamp_dx/4
 	x46 = east_clamp_bsw.x + east_clamp_dx/4
+	x42 = east_edge_bsw.x + east_clamp_dx/4
 	x40 = east_edge_bsw.x
 	# *bottom clamp + *west_clamp*:
 	x19 = west_clamp_tne.x
@@ -709,7 +762,9 @@ class StencilFrame(Part):
 	y30 = north_edge_bsw.y
 	y28 = north_edge_bsw.y - stencil_gap/2
 	y25 = stencil_tne.y
+	y22 = stencil_tne.y - stencil_dy/4
 	y20 = zero
+	y18 = stencil_bsw.y + stencil_dy/4
 	y15 = stencil_bsw.y
 	y12 = south_edge_tne.y + stencil_gap/2
 	y10 = south_edge_tne.y
@@ -721,40 +776,55 @@ class StencilFrame(Part):
 	z20 = north_edge_tne.z
 	z10 = west_edge_tne.z
 	z7  = west_edge_tne.z - west_edge_dz/4
+	z5  = stencil_tne.z
+	z4  = stencil_tne.z - stencil_thickness
 	z3  = west_edge_bsw.z + west_edge_dz/4
 	z0  = west_edge_bsw.z
 
+	# Save *stock_thickness* into *stencil_frame*:
+	stencil_frame.stock_thickness_l = L(inch=0.905)
+
 	# The 16 screws that bolt together the frame:
 	stencil_frame.ne_ne_fastener_.configure(P(x48, y48, z0), P(x48, y48, z20), "#4-40")
-	stencil_frame.ne_nw_fastener_.configure(P(x46, y48, z0), P(x46, y48, z20), "#4-40")
+	stencil_frame.ne_nw_fastener_.configure(P(x42, y48, z0), P(x42, y48, z20), "#4-40")
 	stencil_frame.ne_se_fastener_.configure(P(x48, y46, z0), P(x48, y46, z20), "#4-40")
-	stencil_frame.ne_sw_fastener_.configure(P(x46, y46, z0), P(x46, y46, z20), "#4-40")
+	stencil_frame.ne_sw_fastener_.configure(P(x42, y46, z0), P(x42, y46, z20), "#4-40")
 	stencil_frame.nw_ne_fastener_.configure(P(x6,  y48, z0), P(x6,  y48, z20), "#4-40")
 	stencil_frame.nw_nw_fastener_.configure(P(x2,  y48, z0), P(x2,  y48, z20), "#4-40")
 	stencil_frame.nw_se_fastener_.configure(P(x6,  y46, z0), P(x6,  y46, z20), "#4-40")
 	stencil_frame.nw_sw_fastener_.configure(P(x2,  y46, z0), P(x2,  y46, z20), "#4-40")
 	stencil_frame.se_ne_fastener_.configure(P(x48, y8,  z0), P(x48, y8,  z20), "#4-40")
-	stencil_frame.se_nw_fastener_.configure(P(x46, y8,  z0), P(x46, y8,  z20), "#4-40")
+	stencil_frame.se_nw_fastener_.configure(P(x42, y8,  z0), P(x42, y8,  z20), "#4-40")
 	stencil_frame.se_se_fastener_.configure(P(x48, y6,  z0), P(x48, y6,  z20), "#4-40")
-	stencil_frame.se_sw_fastener_.configure(P(x46, y6,  z0), P(x46, y6,  z20), "#4-40")
+	stencil_frame.se_sw_fastener_.configure(P(x42, y6,  z0), P(x42, y6,  z20), "#4-40")
 	stencil_frame.sw_ne_fastener_.configure(P(x6,  y8,  z0), P(x6,  y8,  z20), "#4-40")
 	stencil_frame.sw_nw_fastener_.configure(P(x2,  y8,  z0), P(x2,  y8,  z20), "#4-40")
 	stencil_frame.sw_se_fastener_.configure(P(x6,  y6,  z0), P(x6,  y6,  z20), "#4-40")
 	stencil_frame.sw_sw_fastener_.configure(P(x2,  y6,  z0), P(x2,  y6,  z20), "#4-40")
         
-	# The 5 screws that bolt the *west_clamp* and *bottom_clamp* (i.e. "wcbc") together:
-	stencil_frame.wcbc_ne_fastener_.configure(P(x17, y28, z0), P(x17, y28, z10), "#4-40")
-	stencil_frame.wcbc_nw_fastener_.configure(P(x13, y28, z0), P(x13, y28, z10), "#4-40")
-	stencil_frame.wcbc_cw_fastener_.configure(P(x13, y20, z0), P(x13, y20, z10), "#4-40")
-	stencil_frame.wcbc_se_fastener_.configure(P(x17, y12, z0), P(x17, y12, z10), "#4-40")
-	stencil_frame.wcbc_sw_fastener_.configure(P(x13, y12, z0), P(x13, y12, z10), "#4-40")
+	# The 8 screws that bolt the *west_clamp* and *bottom_clamp* (i.e. "wcbc") together:
+	stencil_frame.wcbc_ce_fastener_.configure(P(x17,  y20, z0), P(x17, y20, z4),  "#4-40")
+	stencil_frame.wcbc_cw_fastener_.configure(P(x13,  y20, z0), P(x13, y20, z10), "#4-40")
+	stencil_frame.wcbc_nce_fastener_.configure(P(x17, y22, z0), P(x17, y22, z4),  "#4-40")
+	stencil_frame.wcbc_ncw_fastener_.configure(P(x13, y22, z0), P(x13, y22, z10), "#4-40")
+	stencil_frame.wcbc_ne_fastener_.configure(P(x17,  y28, z0), P(x17, y28, z10), "#4-40")
+	stencil_frame.wcbc_nw_fastener_.configure(P(x13,  y28, z0), P(x13, y28, z10), "#4-40")
+	stencil_frame.wcbc_sce_fastener_.configure(P(x17, y18, z0), P(x17, y18, z4),  "#4-40")
+	stencil_frame.wcbc_scw_fastener_.configure(P(x13, y18, z0), P(x13, y18, z10), "#4-40")
+	stencil_frame.wcbc_se_fastener_.configure(P(x17,  y12, z0), P(x17, y12, z10), "#4-40")
+	stencil_frame.wcbc_sw_fastener_.configure(P(x13,  y12, z0), P(x13, y12, z10), "#4-40")
 
-	# The 5 screws that bolt the *east_clamp* and *east_edge* (i.e. "ecee") together:
-	stencil_frame.ecee_ne_fastener_.configure(P(x48, y28, z0), P(x48, y28, z10), "#4-40")
-	stencil_frame.ecee_nw_fastener_.configure(P(x46, y28, z0), P(x46, y28, z10), "#4-40")
-	stencil_frame.ecee_ce_fastener_.configure(P(x48, y20, z0), P(x48, y20, z10), "#4-40")
-	stencil_frame.ecee_se_fastener_.configure(P(x46, y12, z0), P(x46, y12, z10), "#4-40")
-	stencil_frame.ecee_sw_fastener_.configure(P(x48, y12, z0), P(x48, y12, z10), "#4-40")
+	# The 8 screws that bolt the *east_clamp* and *east_edge* (i.e. "ecee") together:
+	stencil_frame.ecee_ce_fastener_.configure(P(x48,  y20, z0), P(x48, y20, z10), "#4-40")
+	stencil_frame.ecee_cw_fastener_.configure(P(x46,  y20, z0), P(x46, y20, z4),  "#4-40")
+	stencil_frame.ecee_nce_fastener_.configure(P(x48, y22, z0), P(x48, y22, z10), "#4-40")
+	stencil_frame.ecee_ncw_fastener_.configure(P(x46, y22, z0), P(x46, y22, z4),  "#4-40")
+	stencil_frame.ecee_ne_fastener_.configure(P(x48,  y28, z0), P(x48, y28, z10), "#4-40")
+	stencil_frame.ecee_nw_fastener_.configure(P(x46,  y28, z0), P(x46, y28, z10), "#4-40")
+	stencil_frame.ecee_sce_fastener_.configure(P(x48, y18, z0), P(x48, y18, z10), "#4-40")
+	stencil_frame.ecee_scw_fastener_.configure(P(x46, y18, z0), P(x46, y18, z4),  "#4-40")
+	stencil_frame.ecee_se_fastener_.configure(P(x48,  y12, z0), P(x48, y12, z10), "#4-40")
+	stencil_frame.ecee_sw_fastener_.configure(P(x46,  y12, z0), P(x46, y12, z10), "#4-40")
 
 	# Fasteners for joining *west_edge* to *bottom_clamp* (i.e. "webc"):
 	stencil_frame.webc_bn_fastener_.configure(P(x0, y25, z3), P(x11, y25, z3), "#6-32")
